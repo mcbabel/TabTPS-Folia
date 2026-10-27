@@ -1,4 +1,4 @@
-<img src="https://i.imgur.com/EYo9tBh.png" width="128">
+<img src="assets/logo-256.png" width="128">
 
 # TabTPS-Folia
 
