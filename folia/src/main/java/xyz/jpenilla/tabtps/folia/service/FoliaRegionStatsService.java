@@ -24,7 +24,6 @@
  */
 package xyz.jpenilla.tabtps.folia.service;
 
-import java.util.Collections;
 import java.util.List;
 import xyz.jpenilla.tabtps.common.service.RegionStatsService;
 
@@ -36,10 +35,7 @@ public final class FoliaRegionStatsService implements RegionStatsService {
   }
 
   private List<Double> collectRegionTps() {
-    if (this.tickTimeService.accessor == null) {
-      return Collections.emptyList();
-    }
-    return this.tickTimeService.accessor.collectAllRegionTps();
+    return this.tickTimeService.sortedRegionTps();
   }
 
   @Override

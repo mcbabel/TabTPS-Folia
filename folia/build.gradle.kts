@@ -4,7 +4,7 @@ plugins {
 
 indra {
   javaVersions {
-    target(25)
+    target(17)
     minimumToolchain(25)
   }
 }
@@ -12,7 +12,11 @@ indra {
 dependencies {
   implementation(projects.tabtpsCommon)
 
-  compileOnly(libs.foliaApi)
+  compileOnly(libs.foliaApi) {
+    exclude(group = "net.kyori")
+    exclude(group = "org.slf4j")
+  }
+  compileOnly(libs.brigadier)
   implementation(libs.adventurePlatformBukkit)
   implementation(libs.adventureTextSerializerPlain)
   implementation(libs.bstatsBukkit)
@@ -63,5 +67,8 @@ tabTPSPlatform {
 }
 
 publishMods.modrinth {
+  minecraftVersions.addAll("1.20", "1.20.1", "1.20.2", "1.20.4", "1.20.6", "1.21.4", "1.21.5", "1.21.6", "1.21.8", "1.21.11", "26.1.2", "26.2", "26.3")
   modLoaders.add("folia")
+  modLoaders.add("purpur")
+  modLoaders.add("spigot")
 }

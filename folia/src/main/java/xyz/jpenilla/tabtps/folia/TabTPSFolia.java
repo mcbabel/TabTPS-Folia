@@ -28,6 +28,7 @@ import java.nio.file.Path;
 import java.util.Objects;
 import net.kyori.adventure.platform.bukkit.BukkitAudiences;
 import org.bstats.bukkit.Metrics;
+import org.bukkit.Server;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -53,13 +54,18 @@ import xyz.jpenilla.tabtps.folia.command.FoliaTickInfoCommandFormatter;
 import xyz.jpenilla.tabtps.folia.service.FoliaRegionStatsService;
 import xyz.jpenilla.tabtps.folia.service.FoliaTickTimeService;
 import xyz.jpenilla.tabtps.folia.service.FoliaUserService;
+import xyz.jpenilla.tabtps.folia.service.PaperTickTimeService;
+import xyz.jpenilla.tabtps.folia.service.SpigotTickTimeService;
 
 public final class TabTPSFolia extends JavaPlugin implements TabTPSPlatform<Player, FoliaUser> {
+  private static final int BSTATS_PLUGIN_ID = 34983;
+
   private TabTPS tabTPS;
+  private @Nullable Metrics metrics;
   private LegacyPaperCommandManager<Commander> commandManager;
   private UserService<Player, FoliaUser> userService;
-  private FoliaTickTimeService tickTimeService;
-  private FoliaRegionStatsService regionStatsService;
+  private TickTimeService tickTimeService;
+  private @Nullable FoliaRegionStatsService regionStatsService;
   private Logger logger;
   private BukkitAudiences audiences;
 
@@ -67,8 +73,7 @@ public final class TabTPSFolia extends JavaPlugin implements TabTPSPlatform<Play
   public void onEnable() {
     this.logger = LoggerFactory.getLogger(this.getLogger().getName());
     this.audiences = BukkitAudiences.create(this);
-    this.tickTimeService = new FoliaTickTimeService();
-    this.regionStatsService = new FoliaRegionStatsService(this.tickTimeService);
+    this.setupTickServices();
 
     this.setupCommandManager();
     this.userService = new FoliaUserService(this);
@@ -78,8 +83,10 @@ public final class TabTPSFolia extends JavaPlugin implements TabTPSPlatform<Play
 
     this.getServer().getPluginManager().registerEvents(new FoliaJoinQuitListener(this), this);
 
+    this.metrics = new Metrics(this, BSTATS_PLUGIN_ID);
+
     if (this.tabTPS.configManager().pluginSettings().updateChecker()) {
-      this.getServer().getAsyncScheduler().runNow(this, task ->
+      this.tabTPS.executor().execute(() ->
         UpdateChecker.checkVersion(this.getDescription().getVersion()).forEach(this.logger::info)
       );
     }
@@ -87,6 +94,10 @@ public final class TabTPSFolia extends JavaPlugin implements TabTPSPlatform<Play
 
   @Override
   public void onDisable() {
+    if (this.metrics != null) {
+      this.metrics.shutdown();
+      this.metrics = null;
+    }
     if (this.tabTPS != null) {
       this.tabTPS.shutdown();
     }
@@ -108,6 +119,38 @@ public final class TabTPSFolia extends JavaPlugin implements TabTPSPlatform<Play
 
   public BukkitAudiences audiences() {
     return Objects.requireNonNull(this.audiences, "BukkitAudiences");
+  }
+
+  private static boolean regionizedServer() {
+    try {
+      Class.forName("io.papermc.paper.threadedregions.RegionizedServer");
+      return true;
+    } catch (final ClassNotFoundException e) {
+      return false;
+    }
+  }
+
+  private static boolean paperServer() {
+    try {
+      Server.class.getMethod("getTPS");
+      return true;
+    } catch (final NoSuchMethodException e) {
+      return false;
+    }
+  }
+
+  private void setupTickServices() {
+    if (!regionizedServer()) {
+      this.logger.info("{} is not a regionized server, using global TPS/MSPT.", this.getServer().getName());
+      this.tickTimeService = paperServer() ? new PaperTickTimeService() : new SpigotTickTimeService();
+      return;
+    }
+
+    final FoliaTickTimeService foliaTickTimeService = new FoliaTickTimeService();
+    this.tickTimeService = foliaTickTimeService;
+    if (foliaTickTimeService.regionDataAvailable()) {
+      this.regionStatsService = new FoliaRegionStatsService(foliaTickTimeService);
+    }
   }
 
   private void setupCommandManager() {
@@ -140,7 +183,11 @@ public final class TabTPSFolia extends JavaPlugin implements TabTPSPlatform<Play
   }
 
   private void registerCommands() {
-    TickInfoCommand.withFormatter(this.tabTPS, this.tabTPS.commands(), new FoliaTickInfoCommandFormatter(this.regionStatsService)).register();
+    if (this.regionStatsService != null) {
+      TickInfoCommand.withFormatter(this.tabTPS, this.tabTPS.commands(), new FoliaTickInfoCommandFormatter(this.regionStatsService)).register();
+    } else {
+      TickInfoCommand.defaultFormatter(this.tabTPS, this.tabTPS.commands()).register();
+    }
     new FoliaPingCommand(this, this.tabTPS.commands()).register();
   }
 
