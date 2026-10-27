@@ -1,0 +1,59 @@
+name: Publish to Modrinth
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to publish, e.g. v1.2.0
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  modrinth:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.TAG }}
+          fetch-depth: 0
+
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+
+      - name: Read release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo "RELEASE_NOTES<<RELEASE_NOTES_EOF"
+            gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body --jq .body
+            echo "RELEASE_NOTES_EOF"
+          } >> "$GITHUB_ENV"
+
+      - name: Check version matches tag
+        run: |
+          version=$(grep '^version=' gradle.properties | cut -d= -f2)
+          if [ "v$version" != "$TAG" ]; then
+            echo "gradle.properties version $version does not match tag $TAG"
+            exit 1
+          fi
+
+      - name: Publish
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+        run: |
+          if [ -z "$MODRINTH_TOKEN" ]; then
+            echo "MODRINTH_TOKEN secret is not set"
+            exit 1
+          fi
+          ./gradlew :tabtps-folia:publishModrinth --console=plain

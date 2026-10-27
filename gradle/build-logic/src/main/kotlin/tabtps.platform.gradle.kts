@@ -19,6 +19,9 @@ tasks {
   }
 }
 
+publishMods.displayName.set("TabTPS Folia $version")
+publishMods.dryRun.set(providers.environmentVariable("MODRINTH_TOKEN").map { it.isBlank() }.orElse(true))
+
 publishMods.modrinth {
   projectId.set("6n5IVh64")
   type.set(ReleaseType.STABLE)
