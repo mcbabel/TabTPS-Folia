@@ -18,3 +18,6 @@ build
 .kotlin/
 
 plans/
+
+/testservers/work/
+/testservers/logs/
