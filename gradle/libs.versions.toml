@@ -34,7 +34,6 @@ neoForm = "1.21.11-20251209.172050"
 indra = "4.0.0"
 shadow = "9.3.0"
 mod-publish-plugin = "1.1.0"
-hangarPublishPlugin = "0.1.4"
 
 [libraries]
 adventureBom = { group = "net.kyori", name = "adventure-bom", version.ref = "adventure" }
@@ -88,7 +87,6 @@ build-indraCommon = { group = "net.kyori", name = "indra-common", version.ref = 
 build-indraLicenser = { group = "net.kyori", name = "indra-licenser-spotless", version.ref = "indra" }
 build-shadow = { module = "com.gradleup.shadow:shadow-gradle-plugin", version.ref = "shadow" }
 build-mod-publish-plugin = { module = "me.modmuss50:mod-publish-plugin", version.ref = "mod-publish-plugin" }
-build-hangarPublishPlugin = { group = "io.papermc", name = "hangar-publish-plugin", version.ref = "hangarPublishPlugin" }
 
 [bundles]
 configurate = ["configurateCore", "configurateHocon"]
